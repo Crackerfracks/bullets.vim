@@ -1079,7 +1079,14 @@ fun! s:shift_line(lnum, dir)
   else
     let l:ws = repeat("\t", l:new / &tabstop) . repeat(' ', l:new % &tabstop)
   endif
-  call setline(a:lnum, l:ws . substitute(l:line, '^\s*', '', ''))
+  let l:old_ws = matchstr(l:line, '^\s*')
+  if has('nvim')
+    " Replace only the leading whitespace, so extmarks on the text (e.g.
+    " render-markdown's decorations) move with it instead of collapsing.
+    call nvim_buf_set_text(0, a:lnum - 1, 0, a:lnum - 1, strlen(l:old_ws), [l:ws])
+  else
+    call setline(a:lnum, l:ws . strpart(l:line, strlen(l:old_ws)))
+  endif
 endfun
 
 fun! s:change_line_bullet_level(direction, lnum)

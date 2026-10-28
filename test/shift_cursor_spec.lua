@@ -49,6 +49,16 @@ describe("Bullets.vim", function()
       assert.are.same({ 2, 6 }, vim.api.nvim_win_get_cursor(0))
     end)
 
+    it("moves extmarks on the text with it instead of collapsing them", function()
+      helpers.new_buffer({ "plain words here" })
+      local ns = vim.api.nvim_create_namespace("bullets_shift_spec")
+      local id = vim.api.nvim_buf_set_extmark(0, ns, 0, 6, { end_col = 11 })
+      vim.cmd("BulletDemote")
+      assert.are.same({ "  plain words here" }, helpers.get_lines())
+      local m = vim.api.nvim_buf_get_extmark_by_id(0, ns, id, { details = true })
+      assert.are.same({ 0, 8, 13 }, { m[1], m[2], m[3].end_col })
+    end)
+
     it("matches >> and << for spaces, tabs, shiftround and blank lines", function()
       local function check(opts, line, dir)
         for k, v in pairs(opts) do

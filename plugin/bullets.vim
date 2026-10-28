@@ -1053,6 +1053,35 @@ command! RecomputeCheckboxes call <SID>recompute_checkboxes()
 " --------------------------------------------------------- }}}
 
 " Changing outline level ---------------------------------- {{{
+" Shifts line lnum one 'shiftwidth' right (dir 1) or left (dir -1), as `>>`
+" and `<<` do, but by rewriting its leading whitespace: `:{lnum}normal! >>`
+" first moves the cursor to column 1, which a redraw during the command (or
+" the undo of the shift) shows.
+fun! s:shift_line(lnum, dir)
+  let l:line = getline(a:lnum)
+  if l:line =~# '^\s*$'
+    " `>>` leaves blank lines alone
+    return
+  endif
+  let l:sw = shiftwidth()
+  let l:old = indent(a:lnum)
+  if a:dir > 0
+    let l:new = &shiftround ? (l:old / l:sw + 1) * l:sw : l:old + l:sw
+  else
+    let l:new = &shiftround ? ((l:old + l:sw - 1) / l:sw - 1) * l:sw : l:old - l:sw
+    let l:new = max([l:new, 0])
+  endif
+  if l:new == l:old
+    return
+  endif
+  if &expandtab
+    let l:ws = repeat(' ', l:new)
+  else
+    let l:ws = repeat("\t", l:new / &tabstop) . repeat(' ', l:new % &tabstop)
+  endif
+  call setline(a:lnum, l:ws . substitute(l:line, '^\s*', '', ''))
+endfun
+
 fun! s:change_line_bullet_level(direction, lnum)
   let l:curr_line = s:parse_bullet(a:lnum, getline(a:lnum))
 
@@ -1062,10 +1091,10 @@ fun! s:change_line_bullet_level(direction, lnum)
       call setline(a:lnum, l:curr_line[-1].text_after_bullet)
       return
     else
-      execute a:lnum . 'normal! <<'
+      call s:shift_line(a:lnum, -1)
     endif
   else
-    execute a:lnum . 'normal! >>'
+    call s:shift_line(a:lnum, 1)
   endif
 
   if l:curr_line == []
